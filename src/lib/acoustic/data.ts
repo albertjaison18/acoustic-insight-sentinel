@@ -34,7 +34,7 @@ export const FLEET: NodeUnit[] = (() => {
       tamper_flagged: tamper,
       lat: CITY_CENTER.lat + (rnd() - 0.5) * BOUNDS.latSpan,
       lng: CITY_CENTER.lng + (rnd() - 0.5) * BOUNDS.lngSpan,
-      district: DISTRICTS[Math.floor(rnd() * DISTRICTS.length)],
+      district: DISTRICTS[Math.floor(rnd() * DISTRICTS.length)]!,
       online: !offline,
     });
   }
