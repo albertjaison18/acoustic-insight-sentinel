@@ -13,7 +13,7 @@ export const Route = createFileRoute("/fleet")({
       {
         name: "description",
         content:
-          "Fleet health for 64 pole-mounted acoustic nodes: battery and solar meters, GSM signal, tamper flags and per-node power-mode switches.",
+          "A simulated fleet-health view for the OmniEar hardware concept, including battery, GSM, tamper and power-mode states.",
       },
       { property: "og:title", content: "Hardware Admin — OmniEar" },
       {
@@ -61,9 +61,7 @@ function Fleet() {
   const toggle = (id: number) =>
     setNodes((prev) =>
       prev.map((n) =>
-        n.id === id
-          ? { ...n, power_mode: n.power_mode === "solar" ? "grid" : "solar" }
-          : n,
+        n.id === id ? { ...n, power_mode: n.power_mode === "solar" ? "grid" : "solar" } : n,
       ),
     );
 
@@ -72,9 +70,13 @@ function Fleet() {
       <div className="mx-auto max-w-[1400px] px-4 py-8">
         <header>
           <p className="mono text-[11px] uppercase tracking-[0.24em] text-signal">
-            hardware admin
+            hardware admin · simulated telemetry
           </p>
           <h1 className="font-display mt-2 text-3xl tracking-tight">Node fleet</h1>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            Demonstration data for the proposed pole fleet. The current Python pipeline does not
+            emit battery, GSM, heartbeat or tamper telemetry.
+          </p>
         </header>
 
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">

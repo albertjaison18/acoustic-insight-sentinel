@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { AcousticAlert, Alert, AlertPriority, OmniEarAlert } from "./types";
+import type { AcousticAlert, AcousticLabel, Alert, AlertPriority, OmniEarAlert } from "./types";
 
 const WS_URL = import.meta.env["VITE_WS_URL"] || "ws://localhost:8765";
 const MAX_HISTORY = 120;
@@ -12,18 +12,23 @@ let reconnectTimer: number | null = null;
 let reconnectAttempt = 0;
 let shouldReconnect = false;
 
-const LABEL_PRIORITIES: Record<string, AlertPriority> = {
+const LABEL_PRIORITIES: Record<AcousticLabel, AlertPriority> = {
   scream_distress: "P0",
   explosion: "P0",
   impact_crash: "P1",
   siren_traffic: "P4",
 };
 
-function parseAlert(raw: unknown): OmniEarAlert | null {
+function alertId(alert: Pick<AcousticAlert, "node_id" | "timestamp">) {
+  return `${alert.node_id}-${alert.timestamp}`;
+}
+
+function parseAlert(raw: unknown): Alert | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
 
   const alert = raw as Partial<AcousticAlert>;
-  const expectedPriority = typeof alert.label === "string" ? LABEL_PRIORITIES[alert.label] : undefined;
+  const expectedPriority =
+    typeof alert.label === "string" ? LABEL_PRIORITIES[alert.label as AcousticLabel] : undefined;
   const validClass = alert.class === "P0" || alert.class === "P1" || alert.class === "P4";
 
   if (
@@ -39,23 +44,39 @@ function parseAlert(raw: unknown): OmniEarAlert | null {
     alert.confidence > 1 ||
     typeof alert.lat !== "number" ||
     !Number.isFinite(alert.lat) ||
+    alert.lat < -90 ||
+    alert.lat > 90 ||
     typeof alert.lng !== "number" ||
-    !Number.isFinite(alert.lng)
+    !Number.isFinite(alert.lng) ||
+    alert.lng < -180 ||
+    alert.lng > 180
   ) {
     return null;
   }
 
-  return { ...alert, priority: alert.class } as OmniEarAlert;
+  return {
+    ...alert,
+    label: alert.label as AcousticLabel,
+    priority: alert.class,
+    status: "new",
+  } as Alert;
+}
+
+function prependAlert(alerts: Alert[], incoming: Alert) {
+  const id = alertId(incoming);
+  const existing = alerts.find((alert) => alertId(alert) === id);
+  const alert = existing ? { ...incoming, status: existing.status } : incoming;
+  return [alert, ...alerts.filter((item) => alertId(item) !== id)].slice(0, MAX_HISTORY);
 }
 
 type State = {
-  alerts: OmniEarAlert[];
+  alerts: Alert[];
   running: boolean;
   connectionStatus: ConnectionStatus;
   socket: WebSocket | null;
   selectedId: string | null;
-  lastP0: OmniEarAlert | null;
-  setAlerts: (alerts: OmniEarAlert[]) => void;
+  lastP0: Alert | null;
+  setAlerts: (alerts: Alert[]) => void;
   push: (alert: OmniEarAlert) => void;
   connectWebSocket: () => void;
   disconnectWebSocket: () => void;
@@ -82,16 +103,21 @@ export const useAlertStore = create<State>((set, get) => ({
   selectedId: null,
   lastP0: null,
   setAlerts: (alerts) => set({ alerts }),
-  push: (alert) =>
-    set((state) => ({
-      alerts: [alert, ...state.alerts].slice(0, MAX_HISTORY),
-      lastP0: alert.priority === "P0" ? alert : state.lastP0,
-    })),
+  push: (incoming) =>
+    set((state) => {
+      const alert: Alert = { ...incoming, status: "new" };
+      const isNew = !state.alerts.some((item) => alertId(item) === alertId(alert));
+      const alerts = prependAlert(state.alerts, alert);
+      return {
+        alerts,
+        lastP0: isNew && alert.priority === "P0" ? alerts[0]! : state.lastP0,
+      };
+    }),
   select: (id) => set({ selectedId: id }),
   setStatus: (id, status) =>
     set((state) => ({
       alerts: state.alerts.map((alert) =>
-        `${alert.node_id}-${alert.timestamp}` === id ? { ...alert, ...(status ? { status } : {}) } : alert,
+        `${alert.node_id}-${alert.timestamp}` === id ? { ...alert, status } : alert,
       ),
     })),
   toggleRunning: () => set((state) => ({ running: !state.running })),
@@ -99,11 +125,22 @@ export const useAlertStore = create<State>((set, get) => ({
     if (typeof window === "undefined") return;
     shouldReconnect = true;
     const existing = get().socket;
-    if (existing && (existing.readyState === WebSocket.CONNECTING || existing.readyState === WebSocket.OPEN)) {
+    if (
+      existing &&
+      (existing.readyState === WebSocket.CONNECTING || existing.readyState === WebSocket.OPEN)
+    ) {
       return;
     }
 
-    const socket = new WebSocket(WS_URL);
+    let socket: WebSocket;
+    try {
+      socket = new WebSocket(WS_URL);
+    } catch (error) {
+      console.error(`Could not open the OmniEar alert feed at ${WS_URL}.`, error);
+      set({ connectionStatus: "error", socket: null });
+      scheduleReconnect(get);
+      return;
+    }
     set({ socket, connectionStatus: "connecting" });
 
     socket.addEventListener("open", () => {
@@ -123,10 +160,14 @@ export const useAlertStore = create<State>((set, get) => ({
           console.warn("Dropping malformed WebSocket alert.");
           return;
         }
-        set((state) => ({
-          alerts: [alert, ...state.alerts].slice(0, MAX_HISTORY),
-          lastP0: alert.priority === "P0" ? alert : state.lastP0,
-        }));
+        set((state) => {
+          const isNew = !state.alerts.some((item) => alertId(item) === alertId(alert));
+          const alerts = prependAlert(state.alerts, alert);
+          return {
+            alerts,
+            lastP0: isNew && alert.priority === "P0" ? alerts[0]! : state.lastP0,
+          };
+        });
       } catch (error) {
         console.warn("Dropping WebSocket alert: invalid JSON.", error);
       }

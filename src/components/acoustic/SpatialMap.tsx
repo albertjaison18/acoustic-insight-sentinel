@@ -110,7 +110,7 @@ export function SpatialMap({
         {nodes.map((n) => {
           const { x, y } = project(n.lat, n.lng);
           const alert = activeByNode.get(String(n.id));
-          const meta = alert ? CLASS_META[alert.class as keyof typeof CLASS_META] ?? null : null;
+          const meta = alert ? (CLASS_META[alert.class as keyof typeof CLASS_META] ?? null) : null;
           const color = !n.online
             ? "rgba(255,255,255,0.25)"
             : n.tamper_flagged

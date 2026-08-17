@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Cpu, Lock, Radio, Sun, Waves } from "lucide-react";
 import { AppShell } from "@/components/acoustic/AppShell";
 import { Waveform } from "@/components/acoustic/Waveform";
-import { CLASS_META, type AlertClass } from "@/lib/acoustic/types";
+import { CLASS_META, LABEL_META, type AcousticLabel } from "@/lib/acoustic/types";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -12,7 +12,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Solar-powered edge-AI acoustic nodes on streetlights classify screams, impacts and arcing on-device, then send structured JSON alerts to police, EMS and utilities.",
+          "An edge-AI acoustic safety prototype that classifies screams, explosions, impacts and traffic sirens, then sends structured JSON alerts without transmitting audio.",
       },
       { property: "og:title", content: "OmniEar — Streetlights that hear, not listen" },
       {
@@ -42,25 +42,28 @@ export const Route = createFileRoute("/")({
 });
 
 const PIPELINE = [
-  { k: "capture", t: "MEMS mic array", d: "Continuous 16 kHz buffer, never stored." },
-  { k: "features", t: "Log-mel frontend", d: "40-band spectrogram computed in RAM." },
-  { k: "infer", t: "On-device CNN", d: "INT8 model on an MCU-class NPU, <60 ms." },
-  { k: "emit", t: "JSON alert", d: "class + confidence + node id + coords only." },
-  { k: "route", t: "Department fan-out", d: "Signed POST to the owning municipal system." },
+  { k: "capture", t: "16 kHz ring buffer", d: "A short in-memory window; never uploaded." },
+  { k: "trigger", t: "Energy trigger", d: "A rolling baseline gates heavier inference." },
+  {
+    k: "features",
+    t: "YAMNet embeddings",
+    d: "Pretrained audio features from the loudest window.",
+  },
+  { k: "infer", t: "Classifier head", d: "Five classes with per-class alert thresholds." },
+  { k: "emit", t: "WebSocket JSON", d: "Node, time, class, confidence and coordinates only." },
 ];
 
-const BOM = [
-  ["MEMS mic array (4×)", "₹ 640"],
-  ["Edge NPU module", "₹ 2,150"],
-  ["LTE-M / NB-IoT radio", "₹ 1,180"],
-  ["6 W solar panel + LFP cell", "₹ 2,400"],
-  ["IP66 pole enclosure", "₹ 1,100"],
+const EVIDENCE = [
+  ["training clips", "10,138"],
+  ["test accuracy", "89%"],
+  ["macro F1", "0.89"],
+  ["raw audio transmitted", "0 B"],
 ];
 
 const LIMITS = [
-  "Classification degrades above 78 dB(A) of sustained background traffic noise.",
-  "Monsoon rain on the enclosure adds broadband noise; P1 recall drops ~9%.",
-  "Personal nodes relay over BLE and only report while the phone is in range.",
+  "Real-world false positives have not yet been validated in chaotic Indian streetscapes.",
+  "Impact/crash and traffic-siren classes have less training data than the strongest classes.",
+  "Pole hardware, cellular backhaul and solar power are product targets, not this laptop demo.",
   "No speech recognition, no speaker ID, no raw audio egress — by construction.",
 ];
 
@@ -91,9 +94,9 @@ function Landing() {
             <span className="text-signal">Never streetlights that listen.</span>
           </h1>
           <p className="mt-5 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Solar-powered nodes classify screams, crashes and electrical arcing on the pole. What
-            leaves the device is a few hundred bytes of JSON — class, confidence, node id, coords.
-            The audio dies in RAM.
+            The working laptop prototype classifies distress screams, explosions, impacts and
+            traffic sirens at the edge. Only a small structured alert leaves the device — never the
+            waveform. Pole-mounted, solar hardware is the next deployment step.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
@@ -129,7 +132,7 @@ function Landing() {
       <section className="mx-auto max-w-[1100px] px-4 pb-16">
         <h2 className="font-display text-2xl tracking-tight">Routing table</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Each class has exactly one owning system. Nothing is broadcast.
+          Each detected label has an explicit operator destination. Raw audio is never included.
         </p>
         <div className="glass mt-6 overflow-x-auto rounded-xl">
           <table className="w-full min-w-[560px] text-left text-sm">
@@ -142,21 +145,27 @@ function Landing() {
               </tr>
             </thead>
             <tbody>
-              {(Object.keys(CLASS_META) as AlertClass[]).map((k) => {
-                const m = CLASS_META[k];
+              {(Object.keys(LABEL_META) as AcousticLabel[]).map((k) => {
+                const m = LABEL_META[k];
+                const priority = CLASS_META[m.priority];
                 return (
                   <tr key={k} className="border-b border-white/5 last:border-0">
                     <td className="px-4 py-3">
                       <span
                         className="mono rounded-full px-2 py-0.5 text-[10px]"
-                        style={{ background: `color-mix(in oklab, ${m.color} 18%, transparent)`, color: m.color }}
+                        style={{
+                          background: `color-mix(in oklab, ${priority.color} 18%, transparent)`,
+                          color: priority.color,
+                        }}
                       >
                         {m.priority}
                       </span>
                     </td>
                     <td className="px-4 py-3">{m.label}</td>
                     <td className="px-4 py-3 text-muted-foreground">{m.routeTo}</td>
-                    <td className="mono px-4 py-3 text-[11px] text-muted-foreground">JSON · ~280 B</td>
+                    <td className="mono px-4 py-3 text-[11px] text-muted-foreground">
+                      JSON · ~280 B
+                    </td>
                   </tr>
                 );
               })}
@@ -168,22 +177,18 @@ function Landing() {
       <section className="mx-auto grid max-w-[1100px] gap-6 px-4 pb-24 lg:grid-cols-2">
         <div className="neo rounded-2xl p-6">
           <h2 className="font-display flex items-center gap-2 text-xl tracking-tight">
-            <Cpu className="size-4 text-signal" aria-hidden /> Bill of materials
+            <Cpu className="size-4 text-signal" aria-hidden /> Prototype evidence
           </h2>
           <ul className="mt-4 space-y-2">
-            {BOM.map(([item, cost]) => (
+            {EVIDENCE.map(([item, value]) => (
               <li key={item} className="mono flex justify-between text-xs">
                 <span className="text-muted-foreground">{item}</span>
-                <span>{cost}</span>
+                <span>{value}</span>
               </li>
             ))}
-            <li className="mono flex justify-between border-t border-white/10 pt-2 text-xs text-signal">
-              <span>per-node total</span>
-              <span>₹ 7,470</span>
-            </li>
           </ul>
           <p className="mono mt-4 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <Sun className="size-3" aria-hidden /> 6 W panel sustains 24/7 duty at 11% average load
+            <Sun className="size-3" aria-hidden /> Solar pole hardware remains a deployment target
           </p>
         </div>
         <div className="glass rounded-2xl p-6">

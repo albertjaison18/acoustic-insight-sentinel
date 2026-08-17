@@ -14,12 +14,12 @@ export const Route = createFileRoute("/map")({
       {
         name: "description",
         content:
-          "Full-screen spatial view of every pole-mounted and personal acoustic node, filtered by priority class, power mode and node status.",
+          "A simulated OmniEar fleet map with live WebSocket alert overlays from the working acoustic pipeline.",
       },
       { property: "og:title", content: "Node Network Map — OmniEar" },
       {
         property: "og:description",
-        content: "The city's streetlights as a sensing layer — 64 nodes, one spatial surface.",
+        content: "A proposed city sensing layer with live structured alert overlays.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -67,6 +67,7 @@ function Toggle({
 
 function NetworkMap() {
   const alerts = useAlertStore((s) => s.alerts);
+  const liveAlerts = useMemo(() => alerts.filter((alert) => alert.status !== "resolved"), [alerts]);
   const [f, setF] = useState<Filters>({
     fixed: true,
     personal: true,
@@ -99,7 +100,7 @@ function NetworkMap() {
       <div className="relative h-[calc(100vh-3.5rem)]">
         <SpatialMap
           nodes={nodes}
-          alerts={alerts}
+          alerts={liveAlerts}
           selectedNodeId={sel?.id ?? null}
           onSelectNode={setSel}
           className="absolute inset-0 rounded-none border-0"
@@ -107,10 +108,15 @@ function NetworkMap() {
 
         <aside className="glass absolute left-3 top-3 z-30 w-[210px] rounded-xl p-2">
           <h2 className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-            Layers
+            Layers · demo fleet
           </h2>
           <Toggle on={f.fixed} onClick={t("fixed")} label="Fixed pole nodes" dot="var(--signal)" />
-          <Toggle on={f.personal} onClick={t("personal")} label="Personal / keychain" dot="var(--p4)" />
+          <Toggle
+            on={f.personal}
+            onClick={t("personal")}
+            label="Personal / keychain"
+            dot="var(--p4)"
+          />
           <h2 className="mt-2 px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground">
             Power mode
           </h2>
@@ -121,7 +127,12 @@ function NetworkMap() {
           </h2>
           <Toggle on={f.online} onClick={t("online")} label="Online" dot="var(--signal)" />
           <Toggle on={f.tamper} onClick={t("tamper")} label="Tamper-flagged" dot="var(--p1)" />
-          <Toggle on={f.offline} onClick={t("offline")} label="Offline" dot="rgba(255,255,255,.3)" />
+          <Toggle
+            on={f.offline}
+            onClick={t("offline")}
+            label="Offline"
+            dot="rgba(255,255,255,.3)"
+          />
           <p className="mono px-2 pb-1 pt-3 text-[10px] text-muted-foreground">
             {nodes.length}/{FLEET.length} shown
           </p>

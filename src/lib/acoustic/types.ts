@@ -1,11 +1,12 @@
 export type AlertPriority = "P0" | "P1" | "P4";
+export type AcousticLabel = "scream_distress" | "explosion" | "impact_crash" | "siren_traffic";
 
 /** The exact JSON alert emitted by omniear_pipeline.py. */
 export interface AcousticAlert {
   node_id: string;
   timestamp: string;
   class: AlertPriority;
-  label: string;
+  label: AcousticLabel;
   confidence: number;
   lat: number;
   lng: number;
@@ -16,11 +17,11 @@ export interface OmniEarAlert extends AcousticAlert {
   priority: AlertPriority;
 }
 
-export type AlertClass = AlertPriority | "P1_impact" | "P1_arcing";
+export type AlertClass = AlertPriority;
 
 export type Alert = OmniEarAlert & {
   id?: string;
-  status?: "new" | "acknowledged" | "resolved";
+  status: "new" | "acknowledged" | "resolved";
 };
 
 export type NodeUnit = {
@@ -42,39 +43,51 @@ export const CLASS_META: Record<
   { label: string; routeTo: string; color: string; priority: string; token: string }
 > = {
   P0: {
-    label: "Scream / SOS",
-    routeTo: "Police PCR / Campus Security",
+    label: "Critical incident",
+    routeTo: "Emergency dispatch",
     color: "var(--p0)",
     priority: "P0",
     token: "p0",
   },
   P1: {
-    label: "Priority incident",
+    label: "Impact / crash",
     routeTo: "EMS / Traffic Dispatch",
-    color: "var(--p1)",
-    priority: "P1",
-    token: "p1",
-  },
-  P1_impact: {
-    label: "Brake-screech + impact",
-    routeTo: "EMS / Traffic Dispatch",
-    color: "var(--p1)",
-    priority: "P1",
-    token: "p1",
-  },
-  P1_arcing: {
-    label: "Electrical arcing",
-    routeTo: "State Electricity Board",
     color: "var(--p1)",
     priority: "P1",
     token: "p1",
   },
   P4: {
-    label: "Ambient noise",
-    routeTo: "Urban Planning aggregate only",
+    label: "Traffic siren",
+    routeTo: "Monitoring only",
     color: "var(--p4)",
     priority: "P4",
     token: "p4",
+  },
+};
+
+export const LABEL_META: Record<
+  AcousticLabel,
+  { label: string; routeTo: string; priority: AlertPriority }
+> = {
+  scream_distress: {
+    label: "Distress / scream",
+    routeTo: "Police PCR / Campus Security",
+    priority: "P0",
+  },
+  explosion: {
+    label: "Explosion",
+    routeTo: "Police / Fire / EMS",
+    priority: "P0",
+  },
+  impact_crash: {
+    label: "Impact / crash",
+    routeTo: "EMS / Traffic Dispatch",
+    priority: "P1",
+  },
+  siren_traffic: {
+    label: "Traffic siren",
+    routeTo: "Monitoring only",
+    priority: "P4",
   },
 };
 

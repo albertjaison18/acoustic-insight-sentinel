@@ -6,7 +6,7 @@ The AcousticEdge frontend is the operations dashboard for OmniEar's edge-AI acou
 
 - Node.js 20 or later
 - npm 10 or later
-- An optional running OmniEar pipeline or `mock_dashboard_listener.py` for live alerts
+- The repository-root `mock_dashboard_listener.py` relay for live alerts
 
 ## Setup
 
@@ -15,6 +15,15 @@ npm install
 cp .env.example .env
 npm run dev
 ```
+
+For the live feed, start the relay from the repository root before the frontend:
+
+```bash
+python mock_dashboard_listener.py
+```
+
+The Python pipeline and browser are both WebSocket clients. The relay receives each pipeline
+alert and broadcasts it to connected dashboards.
 
 The local default WebSocket endpoint is `ws://localhost:8765`. Override it in `.env` when the pipeline is hosted elsewhere:
 
@@ -47,4 +56,10 @@ The dashboard accepts one JSON text frame per alert:
 }
 ```
 
-Malformed messages are logged and ignored. The operations feed and node-network map update live; Fleet hardware information and Analytics' historical dB charts remain local demo data because the pipeline does not provide hardware telemetry, sound level, or district aggregates.
+Malformed messages are logged and ignored. The operations feed and node-network map update live;
+operators can open an incident, acknowledge it, and resolve it for the current browser session.
+The operations feed also includes an explicitly labelled local test-alert button for demos without
+a microphone or trained model running.
+Fleet hardware information, the personal node, and Analytics' historical dB charts are clearly
+labelled local demonstrations because the pipeline does not provide hardware telemetry, sound
+level, or district aggregates.

@@ -57,8 +57,7 @@ function Meter({ value, color }: { value: number; color: string }) {
 export function NodeCard({ node, onToggle }: { node: NodeUnit; onToggle: (id: number) => void }) {
   const dead = !node.online || node.tamper_flagged;
   const battery = node.battery_pct ?? 0;
-  const batteryColor =
-    battery > 60 ? "var(--signal)" : battery > 30 ? "var(--p1)" : "var(--p0)";
+  const batteryColor = battery > 60 ? "var(--signal)" : battery > 30 ? "var(--p1)" : "var(--p0)";
 
   return (
     <article

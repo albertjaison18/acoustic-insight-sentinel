@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { CLASS_META, type Alert } from "@/lib/acoustic/types";
+import { CLASS_META, LABEL_META, type Alert } from "@/lib/acoustic/types";
 import { FLEET, fmtTime } from "@/lib/acoustic/data";
 import { SpatialMap } from "./SpatialMap";
 import { useReducedMotion } from "./Waveform";
@@ -19,24 +19,24 @@ export function IncidentDrawer({
   const reduced = useReducedMotion();
   const node = alert ? FLEET.find((n) => String(n.id) === alert.node_id) : null;
   const meta = alert ? CLASS_META[alert.class] : null;
+  const labelMeta = alert ? LABEL_META[alert.label] : null;
   const alertId = alert ? (alert.id ?? `${alert.node_id}-${alert.timestamp}`) : "";
 
   const payload = alert
     ? {
-        id: alertId,
         node_id: alert.node_id,
+        timestamp: alert.timestamp,
         class: alert.class,
+        label: alert.label,
+        confidence: alert.confidence,
         lat: alert.lat,
         lng: alert.lng,
-        confidence: alert.confidence,
-        timestamp: alert.timestamp,
-        status: alert.status,
       }
     : null;
 
   return (
     <AnimatePresence>
-      {alert && meta && (
+      {alert && meta && labelMeta && (
         <motion.aside
           role="dialog"
           aria-label={`Incident ${alertId}`}
@@ -53,10 +53,12 @@ export function IncidentDrawer({
             />
             <div className="min-w-0 flex-1">
               <p className="mono text-[11px]" style={{ color: meta.color }}>
-                {meta.priority} · {meta.label}
+                {meta.priority} · {labelMeta.label}
               </p>
               <h2 className="mono truncate text-sm">{alertId}</h2>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">Routed to {meta.routeTo}</p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Routed to {labelMeta.routeTo}
+              </p>
             </div>
             <button
               type="button"
@@ -88,23 +90,20 @@ export function IncidentDrawer({
             <p className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">
               Node vicinity
             </p>
-            {node && (
-              <SpatialMap
-                compact
-                nodes={FLEET.filter(
-                  (n) =>
-                    Math.abs(n.lat - node.lat) < 0.03 && Math.abs(n.lng - node.lng) < 0.035,
-                )}
-                alerts={[alert]}
-                selectedNodeId={node.id}
-                className="h-40"
-              />
-            )}
+            <SpatialMap
+              compact
+              nodes={FLEET.filter(
+                (n) => Math.abs(n.lat - alert.lat) < 0.03 && Math.abs(n.lng - alert.lng) < 0.035,
+              )}
+              alerts={[alert]}
+              selectedNodeId={node?.id ?? null}
+              className="h-40"
+            />
           </div>
 
           <div className="px-4 pb-4">
             <p className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">
-              Structured payload — everything the system receives
+              Exact structured payload received — no audio
             </p>
             <pre className="mono overflow-x-auto rounded-lg border border-white/10 bg-void/70 p-3 text-[11px] leading-relaxed text-signal">
               {JSON.stringify(payload, null, 2)}
@@ -115,16 +114,18 @@ export function IncidentDrawer({
             <button
               type="button"
               onClick={() => onAck(alertId)}
-              className="flex-1 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-xs hover:bg-white/10"
+              disabled={alert.status !== "new"}
+              className="flex-1 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-xs hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Acknowledge
+              {alert.status === "new" ? "Acknowledge" : "Acknowledged"}
             </button>
             <button
               type="button"
               onClick={() => onResolve(alertId)}
-              className="flex-1 rounded-md bg-signal px-3 py-2 text-xs font-medium text-void hover:opacity-90"
+              disabled={alert.status === "resolved"}
+              className="flex-1 rounded-md bg-signal px-3 py-2 text-xs font-medium text-void hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Resolve
+              {alert.status === "resolved" ? "Resolved" : "Resolve"}
             </button>
           </div>
         </motion.aside>

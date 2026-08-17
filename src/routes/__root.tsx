@@ -78,7 +78,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Solar-powered streetlight nodes that classify sound on-device and route structured JSON alerts to city services. No raw audio ever leaves the pole.",
+          "An edge-AI acoustic safety prototype that classifies emergency sounds and routes structured JSON alerts without transmitting raw audio.",
       },
       { name: "author", content: "OmniEar" },
       { property: "og:site_name", content: "OmniEar" },

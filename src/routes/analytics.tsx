@@ -19,7 +19,7 @@ export const Route = createFileRoute("/analytics")({
       {
         name: "description",
         content:
-          "P4 noise-pollution analytics: 14-day district trends and a 24-hour ambient-noise heatmap for urban planning teams.",
+          "A demonstration of planned noise-pollution analytics using a local synthetic district dataset.",
       },
       { property: "og:title", content: "Smart City Analytics — OmniEar" },
       {
@@ -55,12 +55,12 @@ function Analytics() {
       <div className="mx-auto max-w-[1400px] px-4 py-8">
         <header>
           <p className="mono text-[11px] uppercase tracking-[0.24em] text-p4">
-            calm register · P4 only
+            calm register · demonstration dataset
           </p>
           <h1 className="font-display mt-2 text-3xl tracking-tight">Smart city analytics</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Aggregated ambient noise from the fixed node fleet. No incidents, no live feed — daily
-            and hourly means published to urban planning.
+            A preview of planned daily and hourly aggregates using local synthetic values. The
+            current live pipeline does not emit decibel readings or district aggregates.
           </p>
         </header>
 
@@ -106,7 +106,10 @@ function Analytics() {
           </div>
           <ul className="mt-4 flex flex-wrap gap-3">
             {DISTRICTS.map((d, i) => (
-              <li key={d} className="mono flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <li
+                key={d}
+                className="mono flex items-center gap-1.5 text-[11px] text-muted-foreground"
+              >
                 <span
                   className="size-2 rounded-full"
                   style={{ background: LINE_COLORS[i % LINE_COLORS.length] }}

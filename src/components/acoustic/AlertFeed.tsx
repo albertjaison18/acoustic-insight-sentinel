@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { fmtTime } from "@/lib/acoustic/data";
 import { useAlertStore } from "@/lib/acoustic/store";
-import type { OmniEarAlert } from "@/lib/acoustic/types";
+import { LABEL_META, type Alert } from "@/lib/acoustic/types";
 import { cn } from "@/lib/utils";
 import { Waveform, useReducedMotion } from "./Waveform";
 
@@ -11,7 +11,7 @@ const PRIORITY_STYLES = {
   P4: { color: "var(--p4)", accent: "Info", label: "P4" },
 } as const;
 
-function getPriorityStyle(priority: OmniEarAlert["priority"]) {
+function getPriorityStyle(priority: Alert["priority"]) {
   return PRIORITY_STYLES[priority] ?? PRIORITY_STYLES.P4;
 }
 
@@ -20,13 +20,13 @@ export function AlertRow({
   onSelect,
   selected,
 }: {
-  alert: OmniEarAlert;
-  onSelect?: (a: OmniEarAlert) => void;
+  alert: Alert;
+  onSelect?: (a: Alert) => void;
   selected?: boolean;
 }) {
   const reduced = useReducedMotion();
   const style = getPriorityStyle(alert.priority);
-  const key = `${alert.node_id}-${alert.timestamp}`;
+  const label = LABEL_META[alert.label].label;
 
   return (
     <motion.li
@@ -43,19 +43,29 @@ export function AlertRow({
           selected && "ring-1 ring-signal/60",
         )}
       >
-        <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: style.color }} aria-hidden />
+        <span
+          className="absolute inset-y-0 left-0 w-[3px]"
+          style={{ background: style.color }}
+          aria-hidden
+        />
         <div className="flex items-center gap-2">
           <span className="relative flex size-2.5 items-center justify-center">
             {!reduced && alert.priority === "P0" && (
-              <span className="ping-ring absolute size-2.5 rounded-full" style={{ background: style.color }} aria-hidden />
+              <span
+                className="ping-ring absolute size-2.5 rounded-full"
+                style={{ background: style.color }}
+                aria-hidden
+              />
             )}
             <span className="size-2 rounded-full" style={{ background: style.color }} />
           </span>
           <span className="mono text-[11px] font-semibold" style={{ color: style.color }}>
             {style.label}
           </span>
-          <span className="truncate text-xs text-foreground">{alert.label}</span>
-          <span className="mono ml-auto text-[11px] text-muted-foreground">{fmtTime(alert.timestamp)}</span>
+          <span className="truncate text-xs text-foreground">{label}</span>
+          <span className="mono ml-auto text-[11px] text-muted-foreground">
+            {fmtTime(alert.timestamp)}
+          </span>
         </div>
         <div className="mono mt-1.5 flex flex-wrap gap-x-3 text-[11px] text-muted-foreground">
           <span>NODE {alert.node_id}</span>
@@ -64,6 +74,18 @@ export function AlertRow({
           </span>
           <span>conf {alert.confidence.toFixed(2)}</span>
           <span className="text-foreground/60">→ {style.accent}</span>
+          <span
+            className={cn(
+              "ml-auto uppercase",
+              alert.status === "new"
+                ? "text-p0"
+                : alert.status === "acknowledged"
+                  ? "text-p1"
+                  : "text-signal",
+            )}
+          >
+            {alert.status}
+          </span>
         </div>
       </button>
     </motion.li>
@@ -75,8 +97,8 @@ export function AlertFeed({
   onSelect,
   selectedId,
 }: {
-  alerts?: OmniEarAlert[];
-  onSelect?: (a: OmniEarAlert) => void;
+  alerts?: Alert[];
+  onSelect?: (a: Alert) => void;
   selectedId?: string | null;
 }) {
   const storeAlerts = useAlertStore((state) => state.alerts);

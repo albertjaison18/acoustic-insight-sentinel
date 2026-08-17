@@ -4,10 +4,6 @@ import viteReact from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [
-    tailwindcss(),
-    tanstackStart({ server: { entry: "server" } }),
-    viteReact(),
-  ],
+  plugins: [tailwindcss(), tanstackStart({ server: { entry: "server" } }), viteReact()],
   resolve: { tsconfigPaths: true },
 });

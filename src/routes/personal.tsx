@@ -13,7 +13,7 @@ export const Route = createFileRoute("/personal")({
       {
         name: "description",
         content:
-          "Companion view for a pocket acoustic node: BLE relay status, battery, and the exact JSON it would emit — no audio, ever.",
+          "A simulated companion view for the proposed pocket acoustic node and its privacy-preserving JSON alert.",
       },
       { property: "og:title", content: "Personal Node — OmniEar" },
       {
@@ -44,7 +44,10 @@ function Personal() {
     <AppShell>
       <div className="mx-auto w-full max-w-[420px] px-4 py-8">
         <header className="flex items-baseline justify-between">
-          <h1 className="font-display text-2xl tracking-tight">Personal node</h1>
+          <div>
+            <p className="mono text-[10px] uppercase tracking-[0.2em] text-p4">concept demo</p>
+            <h1 className="font-display mt-1 text-2xl tracking-tight">Personal node</h1>
+          </div>
           <span className="mono text-[11px] text-muted-foreground">{now}</span>
         </header>
 
@@ -88,10 +91,10 @@ function Personal() {
         <section className="mt-4 grid grid-cols-2 gap-3">
           <div className="neo rounded-xl p-4">
             <p className="mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              link
+              simulated link
             </p>
             <p className="mono mt-1 flex items-center gap-1.5 text-sm text-signal">
-              <BluetoothConnected className="size-3.5" aria-hidden /> BLE ok
+              <BluetoothConnected className="size-3.5" aria-hidden /> BLE ready
             </p>
           </div>
           <div className="neo rounded-xl p-4">
@@ -107,20 +110,19 @@ function Personal() {
             <ShieldCheck className="size-4 text-signal" aria-hidden /> What your phone would send
           </h2>
           <pre className="mono mt-3 overflow-x-auto rounded-lg bg-black/40 p-3 text-[11px] leading-relaxed text-muted-foreground">
-{JSON.stringify(
-  {
-    node_id: node.id,
-    type: "personal",
-    class: "P0",
-    confidence: 0.94,
-    lat: +node.lat.toFixed(5),
-    lng: +node.lng.toFixed(5),
-    timestamp: "2026-08-16T18:41:02Z",
-    audio: null,
-  },
-  null,
-  2,
-)}
+            {JSON.stringify(
+              {
+                node_id: `AE-P-${node.id}`,
+                timestamp: "2026-08-16T18:41:02Z",
+                class: "P0",
+                label: "scream_distress",
+                confidence: 0.94,
+                lat: +node.lat.toFixed(5),
+                lng: +node.lng.toFixed(5),
+              },
+              null,
+              2,
+            )}
           </pre>
           <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-muted-foreground">
             <Waves className="mt-0.5 size-3 shrink-0 text-p4" aria-hidden />
