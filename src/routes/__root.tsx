@@ -7,10 +7,10 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
+import { useAlertStore } from "@/lib/acoustic/store";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
   return (
@@ -37,9 +37,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -77,14 +74,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "AcousticEdge — Edge-AI acoustic sensing for cities" },
+      { title: "OmniEar — Edge-AI acoustic sensing for cities" },
       {
         name: "description",
         content:
           "Solar-powered streetlight nodes that classify sound on-device and route structured JSON alerts to city services. No raw audio ever leaves the pole.",
       },
-      { name: "author", content: "AcousticEdge" },
-      { property: "og:site_name", content: "AcousticEdge" },
+      { name: "author", content: "OmniEar" },
+      { property: "og:site_name", content: "OmniEar" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -99,7 +96,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
     ],
   }),
 
@@ -128,8 +125,21 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <LiveAlertConnection />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>
   );
+}
+
+function LiveAlertConnection() {
+  const connectWebSocket = useAlertStore((state) => state.connectWebSocket);
+  const disconnectWebSocket = useAlertStore((state) => state.disconnectWebSocket);
+
+  useEffect(() => {
+    connectWebSocket();
+    return disconnectWebSocket;
+  }, [connectWebSocket, disconnectWebSocket]);
+
+  return null;
 }

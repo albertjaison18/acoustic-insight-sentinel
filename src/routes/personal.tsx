@@ -9,13 +9,13 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/personal")({
   head: () => ({
     meta: [
-      { title: "Personal Node — AcousticEdge" },
+      { title: "Personal Node — OmniEar" },
       {
         name: "description",
         content:
           "Companion view for a pocket acoustic node: BLE relay status, battery, and the exact JSON it would emit — no audio, ever.",
       },
-      { property: "og:title", content: "Personal Node — AcousticEdge" },
+      { property: "og:title", content: "Personal Node — OmniEar" },
       {
         property: "og:description",
         content: "A pocket-sized relay for the city acoustic network.",

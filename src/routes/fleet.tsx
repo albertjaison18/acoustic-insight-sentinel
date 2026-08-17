@@ -9,13 +9,13 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/fleet")({
   head: () => ({
     meta: [
-      { title: "Hardware Admin — AcousticEdge" },
+      { title: "Hardware Admin — OmniEar" },
       {
         name: "description",
         content:
           "Fleet health for 64 pole-mounted acoustic nodes: battery and solar meters, GSM signal, tamper flags and per-node power-mode switches.",
       },
-      { property: "og:title", content: "Hardware Admin — AcousticEdge" },
+      { property: "og:title", content: "Hardware Admin — OmniEar" },
       {
         property: "og:description",
         content: "Tactile hardware console for the acoustic node fleet.",

@@ -8,13 +8,13 @@ import { CLASS_META, type AlertClass } from "@/lib/acoustic/types";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "AcousticEdge — Streetlights that hear, not listen" },
+      { title: "OmniEar — Streetlights that hear, not listen" },
       {
         name: "description",
         content:
           "Solar-powered edge-AI acoustic nodes on streetlights classify screams, impacts and arcing on-device, then send structured JSON alerts to police, EMS and utilities.",
       },
-      { property: "og:title", content: "AcousticEdge — Streetlights that hear, not listen" },
+      { property: "og:title", content: "OmniEar — Streetlights that hear, not listen" },
       {
         property: "og:description",
         content:
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/")({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
-          name: "AcousticEdge",
+          name: "OmniEar",
           description:
             "Solar-powered edge-AI acoustic sensor network for municipal safety and noise analytics.",
         }),

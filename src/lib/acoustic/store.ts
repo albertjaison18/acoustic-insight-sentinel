@@ -1,76 +1,160 @@
 import { create } from "zustand";
-import { FLEET } from "./data";
-import type { Alert, AlertClass } from "./types";
+import type { AcousticAlert, Alert, AlertPriority, OmniEarAlert } from "./types";
 
-const CANDIDATES = FLEET.filter((n) => n.online);
+const WS_URL = import.meta.env["VITE_WS_URL"] || "ws://localhost:8765";
+const MAX_HISTORY = 120;
+const MIN_RECONNECT_DELAY_MS = 1_000;
+const MAX_RECONNECT_DELAY_MS = 30_000;
 
-function pickClass(): AlertClass {
-  const r = Math.random();
-  if (r < 0.72) return "P4";
-  if (r < 0.86) return "P1_impact";
-  if (r < 0.96) return "P1_arcing";
-  return "P0";
-}
+export type ConnectionStatus = "connecting" | "open" | "closed" | "error";
 
-let seq = 0;
-function makeAlert(): Alert {
-  const node = CANDIDATES[Math.floor(Math.random() * CANDIDATES.length)]!;
-  const cls = pickClass();
-  seq += 1;
-  return {
-    id: `AE-${Date.now().toString(36).toUpperCase()}-${seq}`,
-    node_id: node.id,
-    class: cls,
-    lat: +node.lat.toFixed(5),
-    lng: +node.lng.toFixed(5),
-    confidence: +(cls === "P0" ? 0.88 + Math.random() * 0.11 : 0.7 + Math.random() * 0.29).toFixed(
-      2,
-    ),
-    timestamp: new Date().toISOString(),
-    status: "new",
-  };
+let reconnectTimer: number | null = null;
+let reconnectAttempt = 0;
+let shouldReconnect = false;
+
+const LABEL_PRIORITIES: Record<string, AlertPriority> = {
+  scream_distress: "P0",
+  explosion: "P0",
+  impact_crash: "P1",
+  siren_traffic: "P4",
+};
+
+function parseAlert(raw: unknown): OmniEarAlert | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+
+  const alert = raw as Partial<AcousticAlert>;
+  const expectedPriority = typeof alert.label === "string" ? LABEL_PRIORITIES[alert.label] : undefined;
+  const validClass = alert.class === "P0" || alert.class === "P1" || alert.class === "P4";
+
+  if (
+    typeof alert.node_id !== "string" ||
+    alert.node_id.trim() === "" ||
+    typeof alert.timestamp !== "string" ||
+    !Number.isFinite(Date.parse(alert.timestamp)) ||
+    !validClass ||
+    !expectedPriority ||
+    expectedPriority !== alert.class ||
+    typeof alert.confidence !== "number" ||
+    alert.confidence < 0 ||
+    alert.confidence > 1 ||
+    typeof alert.lat !== "number" ||
+    !Number.isFinite(alert.lat) ||
+    typeof alert.lng !== "number" ||
+    !Number.isFinite(alert.lng)
+  ) {
+    return null;
+  }
+
+  return { ...alert, priority: alert.class } as OmniEarAlert;
 }
 
 type State = {
-  alerts: Alert[];
+  alerts: OmniEarAlert[];
   running: boolean;
+  connectionStatus: ConnectionStatus;
+  socket: WebSocket | null;
   selectedId: string | null;
-  lastP0: Alert | null;
-  push: (a: Alert) => void;
+  lastP0: OmniEarAlert | null;
+  setAlerts: (alerts: OmniEarAlert[]) => void;
+  push: (alert: OmniEarAlert) => void;
+  connectWebSocket: () => void;
+  disconnectWebSocket: () => void;
   select: (id: string | null) => void;
   setStatus: (id: string, status: Alert["status"]) => void;
   toggleRunning: () => void;
 };
 
-export const useAlertStore = create<State>((set) => ({
+function scheduleReconnect(get: () => State) {
+  if (reconnectTimer !== null || !shouldReconnect || typeof window === "undefined") return;
+  const delay = Math.min(MAX_RECONNECT_DELAY_MS, MIN_RECONNECT_DELAY_MS * 2 ** reconnectAttempt);
+  reconnectAttempt += 1;
+  reconnectTimer = window.setTimeout(() => {
+    reconnectTimer = null;
+    get().connectWebSocket();
+  }, delay);
+}
+
+export const useAlertStore = create<State>((set, get) => ({
   alerts: [],
   running: true,
+  connectionStatus: "closed",
+  socket: null,
   selectedId: null,
   lastP0: null,
-  push: (a) =>
-    set((s) => ({
-      alerts: [a, ...s.alerts].slice(0, 60),
-      lastP0: a.class === "P0" ? a : s.lastP0,
+  setAlerts: (alerts) => set({ alerts }),
+  push: (alert) =>
+    set((state) => ({
+      alerts: [alert, ...state.alerts].slice(0, MAX_HISTORY),
+      lastP0: alert.priority === "P0" ? alert : state.lastP0,
     })),
   select: (id) => set({ selectedId: id }),
   setStatus: (id, status) =>
-    set((s) => ({ alerts: s.alerts.map((a) => (a.id === id ? { ...a, status } : a)) })),
-  toggleRunning: () => set((s) => ({ running: !s.running })),
+    set((state) => ({
+      alerts: state.alerts.map((alert) =>
+        `${alert.node_id}-${alert.timestamp}` === id ? { ...alert, ...(status ? { status } : {}) } : alert,
+      ),
+    })),
+  toggleRunning: () => set((state) => ({ running: !state.running })),
+  connectWebSocket: () => {
+    if (typeof window === "undefined") return;
+    shouldReconnect = true;
+    const existing = get().socket;
+    if (existing && (existing.readyState === WebSocket.CONNECTING || existing.readyState === WebSocket.OPEN)) {
+      return;
+    }
+
+    const socket = new WebSocket(WS_URL);
+    set({ socket, connectionStatus: "connecting" });
+
+    socket.addEventListener("open", () => {
+      reconnectAttempt = 0;
+      set({ connectionStatus: "open" });
+    });
+
+    socket.addEventListener("message", (event) => {
+      if (!get().running) return;
+      try {
+        if (typeof event.data !== "string") {
+          console.warn("Dropping WebSocket alert: expected one JSON text frame.");
+          return;
+        }
+        const alert = parseAlert(JSON.parse(event.data));
+        if (!alert) {
+          console.warn("Dropping malformed WebSocket alert.");
+          return;
+        }
+        set((state) => ({
+          alerts: [alert, ...state.alerts].slice(0, MAX_HISTORY),
+          lastP0: alert.priority === "P0" ? alert : state.lastP0,
+        }));
+      } catch (error) {
+        console.warn("Dropping WebSocket alert: invalid JSON.", error);
+      }
+    });
+
+    socket.addEventListener("close", () => {
+      if (get().socket === socket) set({ connectionStatus: "closed", socket: null });
+      scheduleReconnect(get);
+    });
+
+    socket.addEventListener("error", () => {
+      if (get().socket === socket) set({ connectionStatus: "error" });
+    });
+  },
+  disconnectWebSocket: () => {
+    shouldReconnect = false;
+    if (reconnectTimer !== null) {
+      window.clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+    const socket = get().socket;
+    if (socket) {
+      socket.close();
+    }
+    set({ socket: null, connectionStatus: "closed" });
+  },
 }));
 
-let started = false;
-/** Mock simulator: slow trickle of P4, occasional P1, rare P0. */
 export function startSimulator() {
-  if (started || typeof window === "undefined") return;
-  started = true;
-  const { push } = useAlertStore.getState();
-  push(makeAlert());
-  const tick = () => {
-    const delay = 3500 + Math.random() * 6500;
-    window.setTimeout(() => {
-      if (useAlertStore.getState().running) useAlertStore.getState().push(makeAlert());
-      tick();
-    }, delay);
-  };
-  tick();
+  useAlertStore.getState().connectWebSocket();
 }

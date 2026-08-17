@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-4 px-4">
           <Link to="/" className="flex items-center gap-2">
             <Radio className="size-4 text-signal" aria-hidden />
-            <span className="font-display text-sm tracking-tight">AcousticEdge</span>
+            <span className="font-display text-sm tracking-tight">OmniEar</span>
           </Link>
           <nav className="flex flex-1 items-center gap-1 overflow-x-auto">
             {NAV.map((n) => (

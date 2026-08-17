@@ -4,23 +4,22 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Pause, Play } from "lucide-react";
 import { AppShell } from "@/components/acoustic/AppShell";
 import { AlertFeed } from "@/components/acoustic/AlertFeed";
-import { IncidentDrawer } from "@/components/acoustic/IncidentDrawer";
 import { SpatialMap } from "@/components/acoustic/SpatialMap";
 import { useReducedMotion } from "@/components/acoustic/Waveform";
 import { FLEET, sinceLabel } from "@/lib/acoustic/data";
-import { CLASS_META, type Alert } from "@/lib/acoustic/types";
-import { startSimulator, useAlertStore } from "@/lib/acoustic/store";
+import { CLASS_META } from "@/lib/acoustic/types";
+import { useAlertStore } from "@/lib/acoustic/store";
 
 export const Route = createFileRoute("/ops")({
   head: () => ({
     meta: [
-      { title: "Operations Command — AcousticEdge" },
+      { title: "Operations Command — OmniEar" },
       {
         name: "description",
         content:
           "Live acoustic alert feed over a spatial node map. P0 distress, impact and arcing events routed to Police PCR, EMS and the electricity board.",
       },
-      { property: "og:title", content: "Operations Command — AcousticEdge" },
+      { property: "og:title", content: "Operations Command — OmniEar" },
       {
         property: "og:description",
         content: "Night-ops control room for a city-wide edge-AI acoustic sensor network.",
@@ -33,11 +32,13 @@ export const Route = createFileRoute("/ops")({
 });
 
 function Ops() {
-  const { alerts, selectedId, select, setStatus, running, toggleRunning, lastP0 } = useAlertStore();
+  const alerts = useAlertStore((s) => s.alerts);
+  const toggleRunning = useAlertStore((s) => s.toggleRunning);
+  const running = useAlertStore((s) => s.running);
+  const connectionStatus = useAlertStore((s) => s.connectionStatus);
+  const lastP0 = useAlertStore((s) => s.lastP0);
   const reduced = useReducedMotion();
   const [flash, setFlash] = useState(false);
-
-  useEffect(() => startSimulator(), []);
 
   useEffect(() => {
     if (!lastP0) return;
@@ -46,15 +47,14 @@ function Ops() {
     return () => clearTimeout(t);
   }, [lastP0]);
 
-  const selected = alerts.find((a) => a.id === selectedId) ?? null;
-  const active = alerts.filter((a) => a.status !== "resolved");
+  const active = alerts;
 
   const counts = useMemo(() => {
     const c = { P0: 0, P1: 0, P4: 0 };
-    active.forEach((a) => {
-      if (a.class === "P0") c.P0++;
-      else if (a.class === "P4") c.P4++;
-      else c.P1++;
+    active.forEach((alert) => {
+      if (alert.priority === "P0") c.P0++;
+      else if (alert.priority === "P1") c.P1++;
+      else c.P4++;
     });
     return c;
   }, [active]);
@@ -66,19 +66,13 @@ function Ops() {
     return { online, total: FLEET.length, tamper, offlineNode };
   }, []);
 
-  const onSelect = (a: Alert) => select(a.id);
-
   return (
     <AppShell>
       <div className="relative h-[calc(100vh-3.5rem)] w-full">
         <SpatialMap
           nodes={FLEET}
           alerts={active}
-          selectedNodeId={selected?.node_id ?? null}
-          onSelectNode={(n) => {
-            const a = active.find((x) => x.node_id === n.id);
-            if (a) select(a.id);
-          }}
+          selectedNodeId={null}
           className="absolute inset-0 rounded-none border-0"
         />
 
@@ -97,7 +91,6 @@ function Ops() {
           )}
         </AnimatePresence>
 
-        {/* Safety-critical announcement */}
         <div aria-live="assertive" role="status" className="sr-only">
           {lastP0
             ? `P0 distress detected. Node ${lastP0.node_id}. Confidence ${Math.round(
@@ -106,7 +99,6 @@ function Ops() {
             : ""}
         </div>
 
-        {/* Stat cluster */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex flex-wrap gap-2 p-3 sm:p-4">
           {(
             [
@@ -133,11 +125,10 @@ function Ops() {
             className="glass pointer-events-auto ml-auto flex items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] hover:bg-white/10"
           >
             {running ? <Pause className="size-3" /> : <Play className="size-3" />}
-            {running ? "Live feed" : "Feed paused"}
+            {running ? `Live feed · ${connectionStatus}` : "Feed paused"}
           </button>
         </div>
 
-        {/* Alert feed */}
         <div className="absolute inset-x-0 bottom-0 z-30 max-h-[48vh] p-3 sm:inset-y-auto sm:bottom-4 sm:left-4 sm:top-24 sm:max-h-none sm:w-[360px] sm:p-0">
           <section className="glass flex h-full max-h-[46vh] flex-col overflow-hidden rounded-xl sm:max-h-full">
             <header className="flex items-center justify-between border-b border-white/10 px-3 py-2">
@@ -147,12 +138,11 @@ function Ops() {
               <span className="mono text-[11px] text-signal">{active.length} active</span>
             </header>
             <div className="flex-1 overflow-y-auto">
-              <AlertFeed alerts={active} onSelect={onSelect} selectedId={selectedId} />
+              <AlertFeed alerts={active} selectedId={null} />
             </div>
           </section>
         </div>
 
-        {/* Fleet health strip */}
         <div className="glass absolute bottom-4 right-4 z-30 hidden items-center gap-4 rounded-xl px-4 py-2.5 lg:flex">
           <div>
             <p className="mono text-sm text-signal">
@@ -175,16 +165,6 @@ function Ops() {
             </>
           )}
         </div>
-
-        <IncidentDrawer
-          alert={selected}
-          onClose={() => select(null)}
-          onAck={(id) => setStatus(id, "acknowledged")}
-          onResolve={(id) => {
-            setStatus(id, "resolved");
-            select(null);
-          }}
-        />
       </div>
       <p className="sr-only">
         {Object.values(CLASS_META)

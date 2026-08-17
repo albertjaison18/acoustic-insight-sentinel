@@ -15,13 +15,13 @@ import { DISTRICTS } from "@/lib/acoustic/types";
 export const Route = createFileRoute("/analytics")({
   head: () => ({
     meta: [
-      { title: "Smart City Analytics — AcousticEdge" },
+      { title: "Smart City Analytics — OmniEar" },
       {
         name: "description",
         content:
           "P4 noise-pollution analytics: 14-day district trends and a 24-hour ambient-noise heatmap for urban planning teams.",
       },
-      { property: "og:title", content: "Smart City Analytics — AcousticEdge" },
+      { property: "og:title", content: "Smart City Analytics — OmniEar" },
       {
         property: "og:description",
         content: "The calm register — aggregated ambient noise, not incidents.",

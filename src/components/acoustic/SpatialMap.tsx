@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from "react";
 import { BOUNDS, CITY_CENTER } from "@/lib/acoustic/data";
-import type { Alert, NodeUnit } from "@/lib/acoustic/types";
+import type { NodeUnit, OmniEarAlert } from "@/lib/acoustic/types";
 import { CLASS_META } from "@/lib/acoustic/types";
-import { useReducedMotion } from "./Waveform";
 import { cn } from "@/lib/utils";
+import { useReducedMotion } from "./Waveform";
 
 export function project(lat: number, lng: number) {
   const x = ((lng - (CITY_CENTER.lng - BOUNDS.lngSpan / 2)) / BOUNDS.lngSpan) * 100;
@@ -11,9 +11,15 @@ export function project(lat: number, lng: number) {
   return { x: Math.max(2, Math.min(98, x)), y: Math.max(3, Math.min(97, y)) };
 }
 
+function getPriorityColor(priority: OmniEarAlert["priority"]) {
+  if (priority === "P0") return "var(--p0)";
+  if (priority === "P1") return "var(--p1)";
+  return "var(--p4)";
+}
+
 type Props = {
   nodes: NodeUnit[];
-  alerts?: Alert[];
+  alerts?: OmniEarAlert[];
   selectedNodeId?: number | null;
   onSelectNode?: (n: NodeUnit) => void;
   className?: string;
@@ -47,9 +53,10 @@ export function SpatialMap({
   );
 
   const activeByNode = useMemo(() => {
-    const m = new Map<number, Alert>();
-    alerts.forEach((a) => {
-      if (a.status !== "resolved" && !m.has(a.node_id)) m.set(a.node_id, a);
+    const m = new Map<string, OmniEarAlert>();
+    alerts.forEach((alert) => {
+      const key = String(alert.node_id);
+      if (!m.has(key)) m.set(key, alert);
     });
     return m;
   }, [alerts]);
@@ -102,15 +109,17 @@ export function SpatialMap({
       <div className="absolute inset-0" style={layer(-26)}>
         {nodes.map((n) => {
           const { x, y } = project(n.lat, n.lng);
-          const alert = activeByNode.get(n.id);
-          const meta = alert ? CLASS_META[alert.class] : null;
+          const alert = activeByNode.get(String(n.id));
+          const meta = alert ? CLASS_META[alert.class as keyof typeof CLASS_META] ?? null : null;
           const color = !n.online
             ? "rgba(255,255,255,0.25)"
             : n.tamper_flagged
               ? "var(--p1)"
-              : meta
-                ? meta.color
-                : "var(--signal)";
+              : alert
+                ? getPriorityColor(alert.priority)
+                : meta
+                  ? meta.color
+                  : "var(--signal)";
           const selected = selectedNodeId === n.id;
           return (
             <button
@@ -145,6 +154,34 @@ export function SpatialMap({
           );
         })}
       </div>
+
+      <div className="pointer-events-none absolute inset-0" style={layer(-28)}>
+        {Array.from(activeByNode.values()).map((alert) => {
+          const { x, y } = project(alert.lat, alert.lng);
+          const color = getPriorityColor(alert.priority);
+          return (
+            <span
+              key={`${alert.node_id}-${alert.timestamp}`}
+              aria-label={`${alert.priority} ${alert.label} at ${alert.lat}, ${alert.lng}`}
+              className="absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white/80"
+              style={{
+                left: `${x}%`,
+                top: `${y}%`,
+                background: color,
+                boxShadow: `0 0 16px 3px ${color}`,
+              }}
+            />
+          );
+        })}
+      </div>
+
+      {alerts.length > 0 && !compact && (
+        <div className="pointer-events-none absolute inset-x-0 top-4 z-40 flex justify-end px-4">
+          <div className="glass rounded-full px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            {alerts.length} live alerts
+          </div>
+        </div>
+      )}
 
       {hover && !compact && (
         <div

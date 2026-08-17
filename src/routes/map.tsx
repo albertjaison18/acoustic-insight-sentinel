@@ -1,22 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AppShell } from "@/components/acoustic/AppShell";
 import { SpatialMap } from "@/components/acoustic/SpatialMap";
 import { FLEET, fmtTime } from "@/lib/acoustic/data";
-import { useAlertStore, startSimulator } from "@/lib/acoustic/store";
+import { useAlertStore } from "@/lib/acoustic/store";
 import type { NodeUnit } from "@/lib/acoustic/types";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/map")({
   head: () => ({
     meta: [
-      { title: "Node Network Map — AcousticEdge" },
+      { title: "Node Network Map — OmniEar" },
       {
         name: "description",
         content:
           "Full-screen spatial view of every pole-mounted and personal acoustic node, filtered by priority class, power mode and node status.",
       },
-      { property: "og:title", content: "Node Network Map — AcousticEdge" },
+      { property: "og:title", content: "Node Network Map — OmniEar" },
       {
         property: "og:description",
         content: "The city's streetlights as a sensing layer — 64 nodes, one spatial surface.",
@@ -78,8 +78,6 @@ function NetworkMap() {
   });
   const [sel, setSel] = useState<NodeUnit | null>(null);
 
-  useEffect(() => startSimulator(), []);
-
   const nodes = useMemo(
     () =>
       FLEET.filter((n) => {
@@ -101,7 +99,7 @@ function NetworkMap() {
       <div className="relative h-[calc(100vh-3.5rem)]">
         <SpatialMap
           nodes={nodes}
-          alerts={alerts.filter((a) => a.status !== "resolved")}
+          alerts={alerts}
           selectedNodeId={sel?.id ?? null}
           onSelectNode={setSel}
           className="absolute inset-0 rounded-none border-0"

@@ -1,14 +1,26 @@
-export type AlertClass = "P0" | "P1_impact" | "P1_arcing" | "P4";
+export type AlertPriority = "P0" | "P1" | "P4";
 
-export type Alert = {
-  id: string;
-  node_id: number;
-  class: AlertClass;
+/** The exact JSON alert emitted by omniear_pipeline.py. */
+export interface AcousticAlert {
+  node_id: string;
+  timestamp: string;
+  class: AlertPriority;
+  label: string;
+  confidence: number;
   lat: number;
   lng: number;
-  confidence: number;
-  timestamp: string;
-  status: "new" | "acknowledged" | "resolved";
+}
+
+/** Wire alert enriched only with presentation metadata used by the dashboard. */
+export interface OmniEarAlert extends AcousticAlert {
+  priority: AlertPriority;
+}
+
+export type AlertClass = AlertPriority | "P1_impact" | "P1_arcing";
+
+export type Alert = OmniEarAlert & {
+  id?: string;
+  status?: "new" | "acknowledged" | "resolved";
 };
 
 export type NodeUnit = {
@@ -31,10 +43,17 @@ export const CLASS_META: Record<
 > = {
   P0: {
     label: "Scream / SOS",
-    routeTo: "Police PCR",
+    routeTo: "Police PCR / Campus Security",
     color: "var(--p0)",
     priority: "P0",
     token: "p0",
+  },
+  P1: {
+    label: "Priority incident",
+    routeTo: "EMS / Traffic Dispatch",
+    color: "var(--p1)",
+    priority: "P1",
+    token: "p1",
   },
   P1_impact: {
     label: "Brake-screech + impact",
@@ -52,7 +71,7 @@ export const CLASS_META: Record<
   },
   P4: {
     label: "Ambient noise",
-    routeTo: "Urban Planning analytics",
+    routeTo: "Urban Planning aggregate only",
     color: "var(--p4)",
     priority: "P4",
     token: "p4",

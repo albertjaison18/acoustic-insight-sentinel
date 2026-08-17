@@ -17,12 +17,13 @@ export function IncidentDrawer({
   onResolve: (id: string) => void;
 }) {
   const reduced = useReducedMotion();
-  const node = alert ? FLEET.find((n) => n.id === alert.node_id) : null;
+  const node = alert ? FLEET.find((n) => String(n.id) === alert.node_id) : null;
   const meta = alert ? CLASS_META[alert.class] : null;
+  const alertId = alert ? (alert.id ?? `${alert.node_id}-${alert.timestamp}`) : "";
 
   const payload = alert
     ? {
-        id: alert.id,
+        id: alertId,
         node_id: alert.node_id,
         class: alert.class,
         lat: alert.lat,
@@ -38,7 +39,7 @@ export function IncidentDrawer({
       {alert && meta && (
         <motion.aside
           role="dialog"
-          aria-label={`Incident ${alert.id}`}
+          aria-label={`Incident ${alertId}`}
           initial={reduced ? { opacity: 0 } : { x: "100%" }}
           animate={reduced ? { opacity: 1 } : { x: 0 }}
           exit={reduced ? { opacity: 0 } : { x: "100%" }}
@@ -54,7 +55,7 @@ export function IncidentDrawer({
               <p className="mono text-[11px]" style={{ color: meta.color }}>
                 {meta.priority} · {meta.label}
               </p>
-              <h2 className="mono truncate text-sm">{alert.id}</h2>
+              <h2 className="mono truncate text-sm">{alertId}</h2>
               <p className="mt-0.5 text-[11px] text-muted-foreground">Routed to {meta.routeTo}</p>
             </div>
             <button
@@ -113,14 +114,14 @@ export function IncidentDrawer({
           <div className="mt-auto flex gap-2 border-t border-white/10 p-4">
             <button
               type="button"
-              onClick={() => onAck(alert.id)}
+              onClick={() => onAck(alertId)}
               className="flex-1 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-xs hover:bg-white/10"
             >
               Acknowledge
             </button>
             <button
               type="button"
-              onClick={() => onResolve(alert.id)}
+              onClick={() => onResolve(alertId)}
               className="flex-1 rounded-md bg-signal px-3 py-2 text-xs font-medium text-void hover:opacity-90"
             >
               Resolve
